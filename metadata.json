@@ -1,0 +1,5 @@
+{
+  "name": "AI Product Stylist",
+  "description": "An application to virtually style models with different products using AI. Upload an image of a model, a product, and describe how you want to combine them.",
+  "requestFramePermissions": []
+}
