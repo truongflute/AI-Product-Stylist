@@ -1,5 +1,53 @@
 import { GoogleGenAI, Modality, Part } from "@google/genai";
 
+// Utility to resize an image file
+const resizeImage = (file: File, maxSize: number): Promise<File> => {
+    return new Promise((resolve, reject) => {
+        const image = new Image();
+        image.src = URL.createObjectURL(file);
+        image.onload = () => {
+            const canvas = document.createElement('canvas');
+            let { width, height } = image;
+
+            if (width > height) {
+                if (width > maxSize) {
+                    height *= maxSize / width;
+                    width = maxSize;
+                }
+            } else {
+                if (height > maxSize) {
+                    width *= maxSize / height;
+                    height = maxSize;
+                }
+            }
+
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext('2d');
+            if (!ctx) {
+                return reject(new Error("Không thể lấy context của canvas"));
+            }
+            ctx.drawImage(image, 0, 0, width, height);
+            
+            canvas.toBlob((blob) => {
+                if (!blob) {
+                    return reject(new Error("Chuyển đổi canvas sang Blob thất bại"));
+                }
+                const newFile = new File([blob], file.name, {
+                    type: blob.type,
+                    lastModified: Date.now(),
+                });
+                URL.revokeObjectURL(image.src); // Clean up object URL
+                resolve(newFile);
+            }, file.type, 0.95);
+        };
+        image.onerror = (err) => {
+            URL.revokeObjectURL(image.src);
+            reject(err);
+        };
+    });
+};
+
 const fileToBase64 = (file: File): Promise<string> => {
     return new Promise((resolve, reject) => {
         const reader = new FileReader();
@@ -14,10 +62,12 @@ const fileToBase64 = (file: File): Promise<string> => {
 };
 
 const base64StringToPart = (base64String: string): Part => {
+    const [header, data] = base64String.split(',');
+    const mimeType = header.match(/:(.*?);/)?.[1] || 'image/png';
     return {
         inlineData: {
-            data: base64String.split(',')[1],
-            mimeType: 'image/png'
+            data: data,
+            mimeType: mimeType
         }
     };
 };
@@ -36,20 +86,28 @@ export const generateStyledImage = async (
     const ai = new GoogleGenAI({ apiKey });
 
     try {
-        const modelImageBase64 = await fileToBase64(modelImage);
-        const productImageBase64 = await fileToBase64(productImage);
+        const MAX_IMAGE_SIZE_PX = 1024;
+        const [resizedModelImage, resizedProductImage] = await Promise.all([
+            resizeImage(modelImage, MAX_IMAGE_SIZE_PX),
+            resizeImage(productImage, MAX_IMAGE_SIZE_PX)
+        ]);
+        
+        const [modelImageBase64, productImageBase64] = await Promise.all([
+            fileToBase64(resizedModelImage),
+            fileToBase64(resizedProductImage)
+        ]);
 
         const modelImagePart: Part = {
             inlineData: {
                 data: modelImageBase64,
-                mimeType: modelImage.type,
+                mimeType: resizedModelImage.type,
             },
         };
 
         const productImagePart: Part = {
             inlineData: {
                 data: productImageBase64,
-                mimeType: productImage.type,
+                mimeType: resizedProductImage.type,
             },
         };
 
@@ -103,6 +161,22 @@ User's instruction: ${prompt}`;
 
     } catch (error) {
         console.error("Lỗi khi tạo ảnh:", error);
-        throw new Error("Không thể tạo ảnh. Vui lòng thử lại.");
+        
+        let errorMessage = "Không thể tạo ảnh. Vui lòng thử lại.";
+        const errorString = error.toString();
+
+        if (errorString.includes('API key not valid') || errorString.includes('API_KEY_INVALID')) {
+             errorMessage = "Lỗi xác thực: API key không hợp lệ. Vui lòng kiểm tra lại key của bạn.";
+        } else if (errorString.includes('400')) {
+             errorMessage = "Yêu cầu không hợp lệ (Lỗi 400). Có thể do định dạng ảnh hoặc nội dung không được hỗ trợ. Vui lòng kiểm tra lại ảnh đầu vào và thử lại.";
+        } else if (errorString.includes('500') || errorString.includes('503')) {
+             errorMessage = "Lỗi từ máy chủ AI (Lỗi 50x). Dịch vụ có thể đang gặp sự cố hoặc quá tải. Vui lòng thử lại sau ít phút.";
+        } else if (errorString.includes('deadline')) {
+             errorMessage = "Yêu cầu đã hết thời gian chờ. Vui lòng kiểm tra kết nối mạng và thử lại.";
+        } else if (error instanceof Error) {
+            errorMessage = `Đã xảy ra lỗi: ${error.message}`;
+        }
+
+        throw new Error(errorMessage);
     }
 };
