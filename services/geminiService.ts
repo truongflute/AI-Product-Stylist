@@ -24,15 +24,16 @@ const base64StringToPart = (base64String: string): Part => {
 
 
 export const generateStyledImage = async (
+    apiKey: string,
     modelImage: File,
     productImage: File,
     prompt: string,
     productMask: string | null
 ): Promise<string> => {
-    if (!process.env.API_KEY) {
-        throw new Error("API key not found. Please set the API_KEY environment variable.");
+    if (!apiKey) {
+        throw new Error("API key không được cung cấp. Vui lòng nhập API key của bạn.");
     }
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    const ai = new GoogleGenAI({ apiKey });
 
     try {
         const modelImageBase64 = await fileToBase64(modelImage);

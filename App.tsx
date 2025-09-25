@@ -7,6 +7,7 @@ import Spinner from './components/Spinner';
 import { MagicWandIcon, PhotoIcon, ScissorsIcon } from './components/icons';
 
 const App: React.FC = () => {
+  const [apiKey, setApiKey] = useState<string>(() => localStorage.getItem('gemini-api-key') || '');
   const [modelImage, setModelImage] = useState<ImageFile | null>(null);
   const [productImage, setProductImage] = useState<ImageFile | null>(null);
   const [productMask, setProductMask] = useState<string | null>(null);
@@ -16,12 +17,22 @@ const App: React.FC = () => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   
+  const handleApiKeyChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const key = e.target.value;
+    setApiKey(key);
+    localStorage.setItem('gemini-api-key', key);
+  };
+  
   const handleProductSelect = (imageFile: ImageFile) => {
     setProductImage(imageFile);
     setProductMask(null); // Reset mask when a new image is uploaded
   }
 
   const handleGenerate = useCallback(async () => {
+    if (!apiKey) {
+      setError('Vui lòng cung cấp API Key của bạn.');
+      return;
+    }
     if (!modelImage || !productImage || !prompt) {
       setError('Vui lòng tải lên cả hai ảnh và nhập mô tả.');
       return;
@@ -32,16 +43,16 @@ const App: React.FC = () => {
     setGeneratedImage(null);
 
     try {
-      const result = await generateStyledImage(modelImage.file, productImage.file, prompt, productMask);
+      const result = await generateStyledImage(apiKey, modelImage.file, productImage.file, prompt, productMask);
       setGeneratedImage(result);
     } catch (err: any) {
       setError(err.message || 'Đã xảy ra lỗi không xác định.');
     } finally {
       setIsLoading(false);
     }
-  }, [modelImage, productImage, prompt, productMask]);
+  }, [apiKey, modelImage, productImage, prompt, productMask]);
   
-  const isButtonDisabled = !modelImage || !productImage || !prompt || isLoading;
+  const isButtonDisabled = !modelImage || !productImage || !prompt || !apiKey || isLoading;
 
   return (
     <div className="min-h-screen bg-slate-900 font-sans p-4 sm:p-6 lg:p-8">
@@ -58,7 +69,7 @@ const App: React.FC = () => {
       <div className="max-w-7xl mx-auto">
         <header className="text-center mb-10">
           <h1 className="text-4xl sm:text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-indigo-500">
-            AI Product Stylist
+            AI Product Stylist By THMXH.COM
           </h1>
           <p className="mt-3 text-lg text-slate-400 max-w-2xl mx-auto">
             Ghép ảnh người mẫu với sản phẩm của bạn một cách kỳ diệu. Tải ảnh lên và để AI thực hiện phần còn lại.
@@ -68,6 +79,20 @@ const App: React.FC = () => {
         <main className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Cột điều khiển */}
           <div className="bg-slate-800/50 p-6 rounded-2xl shadow-lg border border-slate-700 flex flex-col gap-6">
+            <div>
+              <label htmlFor="api-key" className="block text-sm font-medium text-slate-300 mb-2">
+                Gemini API Key
+              </label>
+              <input
+                id="api-key"
+                type="password"
+                value={apiKey}
+                onChange={handleApiKeyChange}
+                placeholder="Nhập API Key của bạn vào đây"
+                className="w-full bg-slate-900 border border-slate-600 rounded-lg p-3 text-slate-200 focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 transition-all duration-300 placeholder-slate-500"
+              />
+            </div>
+            
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <ImageUploader
                 id="model-image"
