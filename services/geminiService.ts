@@ -1,5 +1,28 @@
 import { GoogleGenAI, Modality, Part } from "@google/genai";
 
+export const validateApiKey = async (apiKey: string): Promise<{ valid: boolean, message: string }> => {
+    if (!apiKey) {
+        return { valid: false, message: "Vui lòng nhập API key." };
+    }
+    const ai = new GoogleGenAI({ apiKey });
+    try {
+        // Thực hiện một lệnh gọi nhẹ, không stream để kiểm tra key.
+        // Chúng ta không quan tâm đến kết quả, chỉ cần biết nó thành công hay thất bại.
+        await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: 'test',
+        });
+        return { valid: true, message: "API Key hợp lệ!" };
+    } catch (error) {
+        console.error("Lỗi xác thực API Key:", error);
+        const errorString = error.toString();
+        if (errorString.includes('API key not valid') || errorString.includes('API_KEY_INVALID')) {
+            return { valid: false, message: "API Key không hợp lệ." };
+        }
+        return { valid: false, message: "Lỗi không xác định khi kiểm tra key." };
+    }
+};
+
 // Utility to resize an image file
 const resizeImage = (file: File, maxSize: number): Promise<File> => {
     return new Promise((resolve, reject) => {
