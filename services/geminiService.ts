@@ -1,28 +1,5 @@
 import { GoogleGenAI, Modality, Part } from "@google/genai";
 
-export const validateApiKey = async (apiKey: string): Promise<{ valid: boolean, message: string }> => {
-    if (!apiKey) {
-        return { valid: false, message: "Vui lòng nhập API key." };
-    }
-    const ai = new GoogleGenAI({ apiKey });
-    try {
-        // Thực hiện một lệnh gọi nhẹ, không stream để kiểm tra key.
-        // Chúng ta không quan tâm đến kết quả, chỉ cần biết nó thành công hay thất bại.
-        await ai.models.generateContent({
-            model: 'gemini-2.5-flash',
-            contents: 'test',
-        });
-        return { valid: true, message: "API Key hợp lệ!" };
-    } catch (error) {
-        console.error("Lỗi xác thực API Key:", error);
-        const errorString = error.toString();
-        if (errorString.includes('API key not valid') || errorString.includes('API_KEY_INVALID')) {
-            return { valid: false, message: "API Key không hợp lệ." };
-        }
-        return { valid: false, message: "Lỗi không xác định khi kiểm tra key." };
-    }
-};
-
 // Utility to resize an image file
 const resizeImage = (file: File, maxSize: number): Promise<File> => {
     return new Promise((resolve, reject) => {
@@ -97,16 +74,12 @@ const base64StringToPart = (base64String: string): Part => {
 
 
 export const generateStyledImage = async (
-    apiKey: string,
     modelImage: File,
     productImage: File,
     prompt: string,
     productMask: string | null
 ): Promise<string> => {
-    if (!apiKey) {
-        throw new Error("API key không được cung cấp. Vui lòng nhập API key của bạn.");
-    }
-    const ai = new GoogleGenAI({ apiKey });
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
     try {
         const MAX_IMAGE_SIZE_PX = 1024;
@@ -189,7 +162,7 @@ User's instruction: ${prompt}`;
         const errorString = error.toString();
 
         if (errorString.includes('API key not valid') || errorString.includes('API_KEY_INVALID')) {
-             errorMessage = "Lỗi xác thực: API key không hợp lệ. Vui lòng kiểm tra lại key của bạn.";
+             errorMessage = "Lỗi xác thực: API key được cấu hình không hợp lệ.";
         } else if (errorString.includes('429') || errorString.includes('RESOURCE_EXHAUSTED') || errorString.includes('quota')) {
             errorMessage = "Đã vượt quá giới hạn sử dụng API (Lỗi 429). Vui lòng kiểm tra gói dịch vụ, thông tin thanh toán của bạn hoặc thử lại sau.";
         } else if (errorString.includes('400')) {

@@ -2,14 +2,11 @@ import React, { useState, useCallback } from 'react';
 import { ImageFile } from './types';
 import ImageUploader from './components/ImageUploader';
 import ImageMasker from './components/ImageMasker';
-import { generateStyledImage, validateApiKey } from './services/geminiService';
+import { generateStyledImage } from './services/geminiService';
 import Spinner from './components/Spinner';
-import { MagicWandIcon, PhotoIcon, ScissorsIcon, CheckCircleIcon, ExclamationCircleIcon } from './components/icons';
+import { MagicWandIcon, PhotoIcon, ScissorsIcon } from './components/icons';
 
 const App: React.FC = () => {
-  const [apiKey, setApiKey] = useState<string>(() => localStorage.getItem('gemini-api-key') || '');
-  const [apiKeyStatus, setApiKeyStatus] = useState<'idle' | 'checking' | 'valid' | 'invalid'>('idle');
-  const [apiKeyMessage, setApiKeyMessage] = useState<string>('');
   const [modelImage, setModelImage] = useState<ImageFile | null>(null);
   const [productImage, setProductImage] = useState<ImageFile | null>(null);
   const [productMask, setProductMask] = useState<string | null>(null);
@@ -19,41 +16,12 @@ const App: React.FC = () => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   
-  const handleApiKeyChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const key = e.target.value;
-    setApiKey(key);
-    localStorage.setItem('gemini-api-key', key);
-    setApiKeyStatus('idle');
-    setApiKeyMessage('');
-  };
-
-  const handleCheckApiKey = async () => {
-    if (!apiKey) {
-      setApiKeyStatus('invalid');
-      setApiKeyMessage('Vui lòng nhập API key.');
-      return;
-    }
-    setApiKeyStatus('checking');
-    setApiKeyMessage('');
-    const { valid, message } = await validateApiKey(apiKey);
-    if (valid) {
-      setApiKeyStatus('valid');
-    } else {
-      setApiKeyStatus('invalid');
-    }
-    setApiKeyMessage(message);
-  };
-  
   const handleProductSelect = (imageFile: ImageFile) => {
     setProductImage(imageFile);
     setProductMask(null); // Reset mask when a new image is uploaded
   }
 
   const handleGenerate = useCallback(async () => {
-    if (apiKeyStatus !== 'valid') {
-      setError('Vui lòng nhập và xác thực một API Key hợp lệ trước.');
-      return;
-    }
     if (!modelImage || !productImage || !prompt) {
       setError('Vui lòng tải lên cả hai ảnh và nhập mô tả.');
       return;
@@ -64,16 +32,16 @@ const App: React.FC = () => {
     setGeneratedImage(null);
 
     try {
-      const result = await generateStyledImage(apiKey, modelImage.file, productImage.file, prompt, productMask);
+      const result = await generateStyledImage(modelImage.file, productImage.file, prompt, productMask);
       setGeneratedImage(result);
     } catch (err: any) {
       setError(err.message || 'Đã xảy ra lỗi không xác định.');
     } finally {
       setIsLoading(false);
     }
-  }, [apiKey, modelImage, productImage, prompt, productMask, apiKeyStatus]);
+  }, [modelImage, productImage, prompt, productMask]);
   
-  const isButtonDisabled = !modelImage || !productImage || !prompt || apiKeyStatus !== 'valid' || isLoading;
+  const isButtonDisabled = !modelImage || !productImage || !prompt || isLoading;
 
   return (
     <div className="min-h-screen bg-slate-900 font-sans p-4 sm:p-6 lg:p-8">
@@ -100,40 +68,6 @@ const App: React.FC = () => {
         <main className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Cột điều khiển */}
           <div className="bg-slate-800/50 p-6 rounded-2xl shadow-lg border border-slate-700 flex flex-col gap-6">
-            <div>
-              <label htmlFor="api-key" className="block text-sm font-medium text-slate-300 mb-2">
-                Gemini API Key
-              </label>
-              <div className="flex items-center gap-2">
-                <input
-                  id="api-key"
-                  type="password"
-                  value={apiKey}
-                  onChange={handleApiKeyChange}
-                  placeholder="Nhập API Key của bạn vào đây"
-                  className="w-full bg-slate-900 border border-slate-600 rounded-lg p-3 text-slate-200 focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 transition-all duration-300 placeholder-slate-500"
-                />
-                <button
-                  onClick={handleCheckApiKey}
-                  disabled={apiKeyStatus === 'checking' || !apiKey}
-                  className="bg-slate-700 hover:bg-slate-600 text-white font-semibold py-3 px-4 rounded-lg transition-colors duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {apiKeyStatus === 'checking' ? (
-                    <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                  ) : 'Kiểm tra'}
-                </button>
-              </div>
-              {apiKeyMessage && (
-                <div className={`mt-2 text-sm flex items-center gap-1.5 ${apiKeyStatus === 'valid' ? 'text-green-400' : 'text-red-400'}`}>
-                  {apiKeyStatus === 'valid' && <CheckCircleIcon className="w-5 h-5" />}
-                  {apiKeyStatus === 'invalid' && <ExclamationCircleIcon className="w-5 h-5" />}
-                  {apiKeyMessage}
-                </div>
-              )}
-            </div>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <ImageUploader
