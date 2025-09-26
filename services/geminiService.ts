@@ -190,6 +190,8 @@ User's instruction: ${prompt}`;
 
         if (errorString.includes('API key not valid') || errorString.includes('API_KEY_INVALID')) {
              errorMessage = "Lỗi xác thực: API key không hợp lệ. Vui lòng kiểm tra lại key của bạn.";
+        } else if (errorString.includes('429') || errorString.includes('RESOURCE_EXHAUSTED') || errorString.includes('quota')) {
+            errorMessage = "Đã vượt quá giới hạn sử dụng API (Lỗi 429). Vui lòng kiểm tra gói dịch vụ, thông tin thanh toán của bạn hoặc thử lại sau.";
         } else if (errorString.includes('400')) {
              errorMessage = "Yêu cầu không hợp lệ (Lỗi 400). Có thể do định dạng ảnh hoặc nội dung không được hỗ trợ. Vui lòng kiểm tra lại ảnh đầu vào và thử lại.";
         } else if (errorString.includes('500') || errorString.includes('503')) {
