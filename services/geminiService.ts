@@ -74,12 +74,16 @@ const base64StringToPart = (base64String: string): Part => {
 
 
 export const generateStyledImage = async (
+    apiKey: string,
     modelImage: File,
     productImage: File,
     prompt: string,
     productMask: string | null
 ): Promise<string> => {
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    if (!apiKey) {
+        throw new Error("Vui lòng cung cấp API key của bạn.");
+    }
+    const ai = new GoogleGenAI({ apiKey });
 
     try {
         const MAX_IMAGE_SIZE_PX = 1024;
@@ -162,7 +166,7 @@ User's instruction: ${prompt}`;
         const errorString = error.toString();
 
         if (errorString.includes('API key not valid') || errorString.includes('API_KEY_INVALID')) {
-             errorMessage = "Lỗi xác thực: API key được cấu hình không hợp lệ.";
+             errorMessage = "Lỗi xác thực: API key bạn cung cấp không hợp lệ. Vui lòng kiểm tra lại.";
         } else if (errorString.includes('429') || errorString.includes('RESOURCE_EXHAUSTED') || errorString.includes('quota')) {
             errorMessage = "Đã vượt quá giới hạn sử dụng API (Lỗi 429). Vui lòng kiểm tra gói dịch vụ, thông tin thanh toán của bạn hoặc thử lại sau.";
         } else if (errorString.includes('400')) {
