@@ -12,6 +12,7 @@ const App: React.FC = () => {
   const [productMask, setProductMask] = useState<string | null>(null);
   const [isMaskerOpen, setIsMaskerOpen] = useState<boolean>(false);
   const [prompt, setPrompt] = useState<string>('');
+  const [apiKey, setApiKey] = useState<string>('');
   const [generatedImage, setGeneratedImage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
@@ -22,8 +23,8 @@ const App: React.FC = () => {
   }
 
   const handleGenerate = useCallback(async () => {
-    if (!modelImage || !productImage || !prompt) {
-      setError('Vui lòng tải lên cả hai ảnh và nhập mô tả.');
+    if (!modelImage || !productImage || !prompt || !apiKey) {
+      setError('Vui lòng tải lên cả hai ảnh, nhập mô tả và cung cấp API key.');
       return;
     }
 
@@ -32,16 +33,16 @@ const App: React.FC = () => {
     setGeneratedImage(null);
 
     try {
-      const result = await generateStyledImage(modelImage.file, productImage.file, prompt, productMask);
+      const result = await generateStyledImage(modelImage.file, productImage.file, prompt, productMask, apiKey);
       setGeneratedImage(result);
     } catch (err: any) {
       setError(err.message || 'Đã xảy ra lỗi không xác định.');
     } finally {
       setIsLoading(false);
     }
-  }, [modelImage, productImage, prompt, productMask]);
+  }, [modelImage, productImage, prompt, productMask, apiKey]);
   
-  const isButtonDisabled = !modelImage || !productImage || !prompt || isLoading;
+  const isButtonDisabled = !modelImage || !productImage || !prompt || !apiKey || isLoading;
 
   return (
     <div className="min-h-screen bg-slate-900 font-sans p-4 sm:p-6 lg:p-8">
@@ -114,6 +115,20 @@ const App: React.FC = () => {
                 value={prompt}
                 onChange={(e) => setPrompt(e.target.value)}
                 placeholder="Ví dụ: 'Người mẫu mặc chiếc áo thun này' hoặc 'Đặt chiếc túi xách lên tay người mẫu'"
+                className="w-full bg-slate-900 border border-slate-600 rounded-lg p-3 text-slate-200 focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 transition-all duration-300 placeholder-slate-500"
+              />
+            </div>
+
+            <div>
+              <label htmlFor="api-key" className="block text-sm font-medium text-slate-300 mb-2">
+                4. Nhập Google AI API Key của bạn
+              </label>
+              <input
+                id="api-key"
+                type="password"
+                value={apiKey}
+                onChange={(e) => setApiKey(e.target.value)}
+                placeholder="Nhập API key của bạn vào đây"
                 className="w-full bg-slate-900 border border-slate-600 rounded-lg p-3 text-slate-200 focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 transition-all duration-300 placeholder-slate-500"
               />
             </div>
